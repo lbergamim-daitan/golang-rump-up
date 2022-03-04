@@ -3,10 +3,10 @@ package controllers
 import (
 	"encoding/csv"
 	"net/http"
-	"reflect"
 	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/lbergamim-daitan/golang-rump-up/internal/middleware"
 	"github.com/lbergamim-daitan/golang-rump-up/internal/models"
 	"github.com/lbergamim-daitan/golang-rump-up/internal/repository"
 	"github.com/lbergamim-daitan/golang-rump-up/internal/responses"
@@ -15,45 +15,31 @@ import (
 func AvailablePhones(w http.ResponseWriter, r *http.Request) {
 	ID := mux.Vars(r)["id"]
 
-	database := models.DatabaseChoose()
+	var phone models.Phone
+
+	database := middleware.DatabaseChoose()
 	phoneRepository := repository.NewPhoneRepo(database)
 
-	phone, err := phoneRepository.ListAvailable(ID)
+	err := phoneRepository.ListAvailable(&phone, ID)
 
 	if err != nil {
 		responses.Err(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	httpStatusCode := http.StatusOK
-	if reflect.DeepEqual(phone, models.Phone{}) {
-		httpStatusCode = http.StatusNotFound
-		responses.JSON(w, httpStatusCode, "error to process request")
-		return
-	}
-
-	responses.JSON(w, httpStatusCode, phone)
-}
-
-func ListPhones(w http.ResponseWriter, r *http.Request) {
-
-	database := models.DatabaseChoose()
-	phoneRepository := repository.NewPhoneRepo(database)
-
-	phones, err := phoneRepository.List()
-	if err != nil {
-		responses.Err(w, http.StatusInternalServerError, err)
-		return
-	}
-
-	responses.JSON(w, http.StatusOK, phones)
+	responses.JSON(w, http.StatusOK, phone)
 }
 
 func CreatePhones(w http.ResponseWriter, r *http.Request) {
-	ID := mux.Vars(r)["id"]
-	var phone models.Phone
+	var phones []models.Phone
 
-	err := r.ParseMultipartForm(32 << 20)
+	ID, err := strconv.ParseUint(mux.Vars(r)["id"], 10, 64)
+	if err != nil {
+		responses.Err(w, http.StatusUnprocessableEntity, err)
+		return
+	}
+
+	err = r.ParseMultipartForm(32 << 20)
 	if err != nil {
 		responses.Err(w, http.StatusUnprocessableEntity, err)
 		return
@@ -67,31 +53,40 @@ func CreatePhones(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	reads := csv.NewReader(file)
-	phone.Rows, err = reads.ReadAll()
-	if err != nil {
+	rows, err := reads.ReadAll()
+	if err != nil || len(rows) > 5000000 {
 		responses.Err(w, http.StatusUnprocessableEntity, err)
 		return
 	}
 
-	phone.CompanyID, err = strconv.ParseUint(ID, 10, 64)
-	if err != nil {
-		responses.Err(w, http.StatusUnprocessableEntity, err)
-		return
+	for _, row := range rows {
+		phone := models.Phone{CompanyID: ID, Number: row[0]}
+		phones = append(phones, phone)
 	}
 
-	err = phone.ValidateFile()
-	if err != nil {
-		responses.Err(w, http.StatusUnprocessableEntity, err)
-		return
-	}
-
-	database := models.DatabaseChoose()
+	database := middleware.DatabaseChoose()
 	phoneRepository := repository.NewPhoneRepo(database)
 
-	err = phoneRepository.Create(phone)
+	err = phoneRepository.Create(&phones)
 	if err != nil {
 		responses.Err(w, http.StatusUnprocessableEntity, err)
 		return
 	}
 	responses.JSON(w, http.StatusCreated, "file uploaded")
+}
+
+func ListPhones(w http.ResponseWriter, r *http.Request) {
+
+	database := middleware.DatabaseChoose()
+	phoneRepository := repository.NewPhoneRepo(database)
+	var phone models.Phone
+	var phonesGroup []models.PhoneGroup
+
+	err := phoneRepository.List(&phone, &phonesGroup)
+	if err != nil {
+		responses.Err(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	responses.JSON(w, http.StatusOK, phonesGroup)
 }

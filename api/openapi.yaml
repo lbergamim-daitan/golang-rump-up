@@ -16,6 +16,30 @@ tags:
   - name: phones
 paths:
   /companies:
+    post:
+      tags:
+        - companies
+      summary: Add a new company
+      requestBody:
+        description: Include a company name into the database
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Company"
+        required: true
+      responses:
+        201:
+          description: Created
+          content: {}
+        400:
+          description: Bad Request
+          content: {}
+        405:
+          description: Not Allowed
+          content: {}
+      security:
+        - bearerAuth: []
+      x-codegen-request-body-name: body
     get:
       tags:
         - companies
@@ -43,30 +67,6 @@ paths:
           content: {}
       security:
         - bearerAuth: []
-    post:
-      tags:
-        - companies
-      summary: Add a new company
-      requestBody:
-        description: Include a company name into the database
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Company"
-        required: true
-      responses:
-        201:
-          description: Created
-          content: {}
-        400:
-          description: Bad Request
-          content: {}
-        405:
-          description: Not Allowed
-          content: {}
-      security:
-        - bearerAuth: []
-      x-codegen-request-body-name: body
   /companies/{id}:
     get:
       tags:
@@ -157,35 +157,6 @@ paths:
           content: {}
       security:
         - bearerAuth: []
-  /companies/{id}/phone:
-    get:
-      tags:
-        - companies
-      summary: Retrieve a phone number from database
-      parameters:
-        - name: id
-          in: path
-          description: Company ID
-          required: true
-          schema:
-            type: integer
-            x-exportParamName: id
-          x-exportParamName: id
-      responses:
-        200:
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CompanyIDPhone"
-        400:
-          description: Bad Request
-          content: {}
-        405:
-          description: Not Allowed
-          content: {}
-      security:
-        - bearerAuth: []
   /companies/{id}/phones:
     post:
       tags:
@@ -213,6 +184,35 @@ paths:
         201:
           description: File uploaded
           content: {}
+        400:
+          description: Bad Request
+          content: {}
+        405:
+          description: Not Allowed
+          content: {}
+      security:
+        - bearerAuth: []
+  /companies/{id}/phone:
+    get:
+      tags:
+        - companies
+      summary: Retrieve a phone number from database
+      parameters:
+        - name: id
+          in: path
+          description: Company ID
+          required: true
+          schema:
+            type: integer
+            x-exportParamName: id
+          x-exportParamName: id
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanyIDPhone"
         400:
           description: Bad Request
           content: {}

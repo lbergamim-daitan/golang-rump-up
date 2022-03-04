@@ -23,7 +23,7 @@ func ValidateToken(r *http.Request) error {
 	tokenString := extractToken(r)
 	token, err := jwt.Parse(tokenString, ReturnSecretKey)
 	if err != nil {
-		return err
+		return errors.New("invalid token")
 	}
 
 	if _, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {

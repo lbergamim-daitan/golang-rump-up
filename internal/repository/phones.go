@@ -4,57 +4,56 @@ import (
 	"strconv"
 
 	"github.com/lbergamim-daitan/golang-rump-up/internal/models"
-	"github.com/lbergamim-daitan/golang-rump-up/internal/responses"
 )
 
 type Phone struct {
 	database models.DatabaseInterface
 }
 
-func NewPhoneRepo(database models.DatabaseInterface) models.PhonesInterface {
+func NewPhoneRepo(database models.DatabaseInterface) *Phone {
 	return &Phone{database}
 }
 
-func (p *Phone) ListAvailable(ID string) (responses.DefaultQuery, error) {
+func (p *Phone) ListAvailable(phone *models.Phone, ID string) error {
 	err := p.database.Connect()
 	if err != nil {
-		return responses.DefaultQuery{}, err
+		return err
 	}
-
-	phone, err := p.database.QueryAvailable("phone", "company_id", ID)
+	err = p.database.QueryAvailable("phones", "company_id", ID, phone)
 	if err != nil {
-		return responses.DefaultQuery{}, err
+		return err
 	}
 
-	err = p.database.Delete("phone", strconv.FormatUint(phone.ID, 10))
+	err = p.database.Delete("phones", strconv.FormatUint(phone.ID, 10), phone)
 	if err != nil {
-		return responses.DefaultQuery{}, err
+		return err
 	}
 
-	return phone, nil
+	return nil
+
 }
 
-func (p *Phone) List() ([]responses.DefaultQuery, error) {
-	err := p.database.Connect()
-	if err != nil {
-		return []responses.DefaultQuery{}, err
-	}
-
-	phones, err := p.database.QueryCount("phone", "company_id")
-	if err != nil {
-		return []responses.DefaultQuery{}, err
-	}
-
-	return phones, nil
-}
-
-func (p *Phone) Create(phone models.Phone) error {
+func (p *Phone) Create(phones *[]models.Phone) error {
 	err := p.database.Connect()
 	if err != nil {
 		return err
 	}
 
-	err = p.database.InsertMany("phone", "number, company_id", phone.Rows, phone.CompanyID)
+	err = p.database.InsertMany("phones", phones)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *Phone) List(phone *models.Phone, phones *[]models.PhoneGroup) error {
+	err := p.database.Connect()
+	if err != nil {
+		return err
+	}
+
+	err = p.database.QueryCount("phones", "company_id", phone, phones)
 	if err != nil {
 		return err
 	}

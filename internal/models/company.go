@@ -3,17 +3,7 @@ package models
 import (
 	"errors"
 	"strings"
-
-	"github.com/lbergamim-daitan/golang-rump-up/internal/responses"
 )
-
-type CompanyInterface interface {
-	Create(company Company) (uint64, error)
-	List(name string) ([]responses.DefaultQuery, error)
-	ListID(ID string) ([]responses.DefaultQuery, error)
-	Update(ID string, company Company) (uint64, error)
-	Delete(ID string) error
-}
 
 type Company struct {
 	ID   uint64 `json:"id,omitempty"`

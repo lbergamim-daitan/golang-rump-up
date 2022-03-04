@@ -7,11 +7,36 @@ import (
 	_ "github.com/go-sql-driver/mysql" // Driver
 
 	"github.com/lbergamim-daitan/golang-rump-up/internal/config"
-	"github.com/lbergamim-daitan/golang-rump-up/internal/responses"
+	"github.com/lbergamim-daitan/golang-rump-up/internal/models"
 )
 
 type Mysql struct {
 	DB *sql.DB
+}
+
+func TypeAssertion(model interface{}) interface{} {
+	value, ok := model.(*models.Company)
+	if !ok {
+		value, ok := model.(*models.Phone)
+		if !ok {
+			return ""
+		}
+		return value.ID
+	}
+	return value.Name
+}
+
+func UpdateID(model interface{}, ID uint64) {
+	value, ok := model.(*models.Company)
+	if !ok {
+		value, ok := model.(*models.Phone)
+		if !ok {
+			return
+		}
+		value.ID = ID
+		return
+	}
+	value.ID = ID
 }
 
 func (d *Mysql) Connect() error {
@@ -28,37 +53,42 @@ func (d *Mysql) Connect() error {
 	return err
 }
 
-func (d *Mysql) Insert(table string, columnName string, value string) (uint64, error) {
+func (d *Mysql) Insert(table string, columnName string, model interface{}) error {
+	value := TypeAssertion(model)
+
 	x := fmt.Sprintf("insert into %s (%s) values(?)", table, columnName)
-	statement, err := d.DB.Prepare(x)
-	if err != nil {
-		return 0, err
-	}
-	defer d.DB.Close()
-
-	result, err := statement.Exec(value)
-	if err != nil {
-		return 0, err
-	}
-
-	lastID, err := result.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-
-	return uint64(lastID), nil
-}
-
-func (d *Mysql) InsertMany(table string, columnName string, rows [][]string, ID uint64) error {
-	x := fmt.Sprintf("insert into %s (%s) values(?, ?)", table, columnName)
 	statement, err := d.DB.Prepare(x)
 	if err != nil {
 		return err
 	}
 	defer d.DB.Close()
 
-	for _, row := range rows {
-		_, err := statement.Exec(row[0], ID)
+	result, err := statement.Exec(value)
+	if err != nil {
+		return err
+	}
+
+	lastID, err := result.LastInsertId()
+	if err != nil {
+		return err
+	}
+
+	UpdateID(model, uint64(lastID))
+
+	return nil
+
+}
+
+func (d *Mysql) InsertMany(table string, model interface{}) error {
+	phones, _ := model.(*[]models.Phone)
+	x := fmt.Sprintf("insert into %s (company_id, number) values(?, ?)", table)
+	statement, err := d.DB.Prepare(x)
+	if err != nil {
+		return err
+	}
+	defer d.DB.Close()
+	for _, row := range *phones {
+		_, err := statement.Exec(row.CompanyID, row.Number)
 		if err != nil {
 			return err
 		}
@@ -67,129 +97,106 @@ func (d *Mysql) InsertMany(table string, columnName string, rows [][]string, ID 
 	return nil
 }
 
-func (d *Mysql) Query(table string, columnName string, values string) ([]responses.DefaultQuery, error) {
-	x := fmt.Sprintf("select * from %s where %s LIKE ?", table, columnName)
-	query, err := d.DB.Query(x, values)
-	if err != nil {
-		return nil, err
-	}
-	defer d.DB.Close()
-
-	var defaultQuerys []responses.DefaultQuery
-
-	for query.Next() {
-		var defaultQuery responses.DefaultQuery
-
-		if err = query.Scan(
-			&defaultQuery.ID,
-			&defaultQuery.Name,
-		); err != nil {
-			return nil, err
-		}
-
-		defaultQuerys = append(defaultQuerys, defaultQuery)
-	}
-
-	return defaultQuerys, nil
-}
-
-func (d *Mysql) QueryAvailable(table string, columnName string, ID string) (responses.DefaultQuery, error) {
-	var defaultQuery responses.DefaultQuery
-
-	x := fmt.Sprintf("select * from %s where %s = ? order by rand() limit 1", table, columnName)
-
-	_, err := d.DB.Begin()
-	if err != nil {
-		return defaultQuery, err
-	}
-
-	row := d.DB.QueryRow(x, ID)
-
-	if err := row.Scan(
-		&defaultQuery.ID,
-		&defaultQuery.CompanyID,
-		&defaultQuery.Number,
-	); err != nil {
-		return defaultQuery, err
-	}
-
-	return defaultQuery, nil
-}
-
-func (d *Mysql) QueryID(table string, value string) ([]responses.DefaultQuery, error) {
+func (d *Mysql) QueryID(table string, value string, model interface{}) error {
 	x := fmt.Sprintf("select * from %s where ID = ?", table)
 	query, err := d.DB.Query(x, value)
 	if err != nil {
-		return nil, err
+		return nil
 	}
 	defer d.DB.Close()
 
-	var defaultQuerys []responses.DefaultQuery
+	company, ok := model.(*models.Company)
+	if !ok {
+		phone, _ := model.(*models.Phone)
 
-	for query.Next() {
-		var defaultQuery responses.DefaultQuery
+		for query.Next() {
 
-		if err = query.Scan(
-			&defaultQuery.ID,
-			&defaultQuery.Name,
-		); err != nil {
-			return nil, err
+			if err = query.Scan(
+				&phone.ID,
+				&phone.Number,
+			); err != nil {
+				return err
+			}
 		}
-
-		defaultQuerys = append(defaultQuerys, defaultQuery)
+		return nil
 	}
 
-	return defaultQuerys, nil
+	for query.Next() {
+		if err = query.Scan(
+			&company.ID,
+			&company.Name,
+		); err != nil {
+			return err
+		}
+	}
+
+	return nil
+
 }
 
-func (d *Mysql) QueryCount(table string, columnName string) ([]responses.DefaultQuery, error) {
-	x := fmt.Sprintf("select %s, count(*) AS `available_phones` from %s group by %s", columnName, table, columnName)
-	query, err := d.DB.Query(x)
+func (d *Mysql) Query(table string, columnName string, values string, model interface{}) error {
+	x := fmt.Sprintf("select * from %s where %s LIKE ?", table, columnName)
+	query, err := d.DB.Query(x, values)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer d.DB.Close()
 
-	var defaultQuerys []responses.DefaultQuery
+	companies, ok := model.(*[]models.Company)
+	if !ok {
+		phones, _ := model.(*[]models.Phone)
 
-	for query.Next() {
-		var defaultQuery responses.DefaultQuery
+		for query.Next() {
+			phone := models.Phone{}
 
-		if err = query.Scan(
-			&defaultQuery.CompanyID,
-			&defaultQuery.PhoneQuantity,
-		); err != nil {
-			return nil, err
+			if err = query.Scan(
+				&phone.ID,
+				&phone.Number,
+			); err != nil {
+				return err
+			}
+
+			*phones = append(*phones, phone)
 		}
 
-		defaultQuerys = append(defaultQuerys, defaultQuery)
+		return nil
 	}
 
-	return defaultQuerys, nil
+	for query.Next() {
+		company := models.Company{}
+
+		if err = query.Scan(
+			&company.ID,
+			&company.Name,
+		); err != nil {
+			return err
+		}
+
+		*companies = append(*companies, company)
+	}
+
+	return nil
 }
 
-func (d *Mysql) Update(table string, columnName string, value string, ID string) (uint64, error) {
+func (d *Mysql) Update(table string, columnName string, model interface{}, ID string) error {
+	value := TypeAssertion(model)
+
 	x := fmt.Sprintf("update %s set %s = ? where ID = ?", table, columnName)
 	statement, err := d.DB.Prepare(x)
 	if err != nil {
-		return 0, err
+		return err
 	}
 	defer d.DB.Close()
 
-	result, err := statement.Exec(value, ID)
+	_, err = statement.Exec(value, ID)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
-	lastID, err := result.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-
-	return uint64(lastID), nil
+	return nil
 }
 
-func (d *Mysql) Delete(table string, ID string) error {
+func (d *Mysql) Delete(table string, ID string, model interface{}) error {
 	x := fmt.Sprintf("delete from %s where ID = ?", table)
 	statement, err := d.DB.Prepare(x)
 
@@ -201,6 +208,70 @@ func (d *Mysql) Delete(table string, ID string) error {
 	_, err = statement.Exec(ID)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (d *Mysql) QueryAvailable(table string, columnName string, ID string, model interface{}) error {
+	x := fmt.Sprintf("select * from %s where %s = ? order by rand() limit 1", table, columnName)
+
+	query, err := d.DB.Query(x, ID)
+	if err != nil {
+		return nil
+	}
+
+	company, ok := model.(*models.Company)
+	if !ok {
+		phone, _ := model.(*models.Phone)
+
+		for query.Next() {
+
+			if err = query.Scan(
+				&phone.ID,
+				&phone.CompanyID,
+				&phone.Number,
+			); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	for query.Next() {
+		if err = query.Scan(
+			&company.ID,
+			&company.Name,
+		); err != nil {
+			return err
+		}
+	}
+
+	return nil
+
+}
+
+func (d *Mysql) QueryCount(table string, columnName string, model interface{}, modelGroup interface{}) error {
+	x := fmt.Sprintf("select %s, count(*) AS `available_phones` from %s group by %s", columnName, table, columnName)
+	query, err := d.DB.Query(x)
+	if err != nil {
+		return nil
+	}
+	defer d.DB.Close()
+
+	phones, _ := modelGroup.(*[]models.PhoneGroup)
+
+	for query.Next() {
+		var phone models.PhoneGroup
+
+		if err = query.Scan(
+			&phone.CompanyID,
+			&phone.AvailablePhones,
+		); err != nil {
+			return nil
+		}
+
+		*phones = append(*phones, phone)
 	}
 
 	return nil
