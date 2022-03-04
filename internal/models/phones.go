@@ -3,13 +3,14 @@ package models
 import (
 	"errors"
 	"strings"
+
+	"github.com/lbergamim-daitan/golang-rump-up/internal/responses"
 )
 
 type PhonesInterface interface {
 	Create(phone Phone) error
-	ListAvailable(ID string) (Phone, error)
-	List() ([]Phone, error)
-	Delete(ID uint64) error
+	ListAvailable(ID string) (responses.DefaultQuery, error)
+	List() ([]responses.DefaultQuery, error)
 }
 
 type Phone struct {
@@ -20,7 +21,6 @@ type Phone struct {
 	PhoneQuantity uint64     `json:"available_phones,omitempty"`
 }
 
-//Prepare call methods to validate phone
 func (p *Phone) Prepare() error {
 	if err := p.validate(); err != nil {
 		return err

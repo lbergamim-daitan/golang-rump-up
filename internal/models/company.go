@@ -3,12 +3,14 @@ package models
 import (
 	"errors"
 	"strings"
+
+	"github.com/lbergamim-daitan/golang-rump-up/internal/responses"
 )
 
 type CompanyInterface interface {
 	Create(company Company) (uint64, error)
-	List(name string) ([]Company, error)
-	ListID(ID string) ([]Company, error)
+	List(name string) ([]responses.DefaultQuery, error)
+	ListID(ID string) ([]responses.DefaultQuery, error)
 	Update(ID string, company Company) (uint64, error)
 	Delete(ID string) error
 }
@@ -18,7 +20,6 @@ type Company struct {
 	Name string `json:"name,omitempty"`
 }
 
-//Prepare call methods to validate company
 func (c *Company) Prepare() error {
 	if err := c.validate(); err != nil {
 		return err
