@@ -19,6 +19,7 @@ var CompaniesRoute = []Route{
 		Func:   controllers.ListCompanies,
 		Auth:   true,
 	},
+
 	{
 		URI:    "/companies/{id}",
 		Method: http.MethodGet,
@@ -37,6 +38,7 @@ var CompaniesRoute = []Route{
 		Func:   controllers.DeleteCompany,
 		Auth:   true,
 	},
+
 	{
 		URI:    "/companies/{id}/phone",
 		Method: http.MethodGet,

@@ -42,3 +42,25 @@ Then, go to your repo folder:
 
 and run:
 `docker-compose up -d`
+
+You can choose two types of database drives: `mysql` or `orm`. Just change the `DB_IMPL` field in the environment file to `mysql` or `orm` and follow steps bellow:
+
+`docker-compose build`
+
+`docker-compose up`
+
+If you encounter a non-existent database error, follow the steps below:
+
+`docker-compose down`
+
+`docker volume ls`
+
+`docker volume rm -f golang-rump-up_my-db`
+
+If the container is running, remove it and then repeat the command
+
+`docker volume rm -f golang-rump-up_my-db`
+
+After that, run the command below again:
+
+`docker-compose up -d`

@@ -4,80 +4,79 @@ import (
 	"fmt"
 
 	"github.com/lbergamim-daitan/golang-rump-up/internal/models"
-	"github.com/lbergamim-daitan/golang-rump-up/internal/responses"
 )
 
 type Company struct {
 	database models.DatabaseInterface
 }
 
-func NewCompanyRepo(database models.DatabaseInterface) models.CompanyInterface {
+func NewCompanyRepo(database models.DatabaseInterface) *Company {
 	return &Company{database}
 }
 
-func (c *Company) Create(company models.Company) (uint64, error) {
-	err := c.database.Connect()
-	if err != nil {
-		return 0, err
-	}
-
-	lastID, err := c.database.Insert("company", "name", company.Name)
-	if err != nil {
-		return 0, err
-	}
-
-	return lastID, nil
-}
-
-func (c *Company) List(name string) ([]responses.DefaultQuery, error) {
-	err := c.database.Connect()
-	if err != nil {
-		return nil, err
-	}
-	name = fmt.Sprintf("%%%s%%", name)
-
-	query, err := c.database.Query("company", "name", name)
-	if err != nil {
-		return nil, err
-	}
-
-	return query, nil
-}
-
-func (c *Company) ListID(ID string) ([]responses.DefaultQuery, error) {
-	err := c.database.Connect()
-	if err != nil {
-		return nil, err
-	}
-	query, err := c.database.QueryID("company", ID)
-	if err != nil {
-		return nil, err
-	}
-
-	return query, nil
-}
-
-func (c *Company) Update(ID string, company models.Company) (uint64, error) {
-	err := c.database.Connect()
-	if err != nil {
-		return 0, err
-	}
-
-	lastID, err := c.database.Update("company", "name", company.Name, ID)
-	if err != nil {
-		return 0, err
-	}
-
-	return lastID, nil
-}
-
-func (c *Company) Delete(ID string) error {
+func (c *Company) Create(company *models.Company) error {
 	err := c.database.Connect()
 	if err != nil {
 		return err
 	}
 
-	err = c.database.Delete("company", ID)
+	err = c.database.Insert("companies", "name", company)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Company) List(companies *[]models.Company, name string) error {
+	err := c.database.Connect()
+	if err != nil {
+		return nil
+	}
+	name = fmt.Sprintf("%%%s%%", name)
+
+	err = c.database.Query("companies", "name", name, companies)
+	if err != nil {
+		return nil
+	}
+
+	return nil
+}
+
+func (c *Company) ListID(company *models.Company, ID string) error {
+	err := c.database.Connect()
+	if err != nil {
+		return err
+	}
+	err = c.database.QueryID("companies", ID, company)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Company) Update(ID string, company *models.Company) error {
+	err := c.database.Connect()
+	if err != nil {
+		return err
+	}
+
+	err = c.database.Update("companies", "name", company, ID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Company) Delete(ID string, company *models.Company) error {
+	err := c.database.Connect()
+	if err != nil {
+		return err
+	}
+
+	err = c.database.Delete("companies", ID, company)
 	if err != nil {
 		return err
 	}

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/lbergamim-daitan/golang-rump-up/internal/middleware"
 	"github.com/lbergamim-daitan/golang-rump-up/internal/models"
 	"github.com/lbergamim-daitan/golang-rump-up/internal/repository"
 	"github.com/lbergamim-daitan/golang-rump-up/internal/responses"
@@ -30,10 +31,10 @@ func CreateCompany(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	database := models.DatabaseChoose()
+	database := middleware.DatabaseChoose()
 	companyRepository := repository.NewCompanyRepo(database)
 
-	company.ID, err = companyRepository.Create(company)
+	err = companyRepository.Create(&company)
 	if err != nil {
 		responses.Err(w, http.StatusInternalServerError, err)
 		return
@@ -43,40 +44,38 @@ func CreateCompany(w http.ResponseWriter, r *http.Request) {
 }
 
 func ListCompanies(w http.ResponseWriter, r *http.Request) {
+
+	var companies []models.Company
+
 	name := strings.ToLower(r.URL.Query().Get("name"))
 
-	database := models.DatabaseChoose()
+	database := middleware.DatabaseChoose()
 	companyRepository := repository.NewCompanyRepo(database)
 
-	companies, err := companyRepository.List(name)
+	err := companyRepository.List(&companies, name)
+	if err != nil {
+		responses.Err(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	responses.JSON(w, http.StatusOK, &companies)
+}
+
+func ListCompany(w http.ResponseWriter, r *http.Request) {
+	ID := mux.Vars(r)["id"]
+
+	var companies models.Company
+
+	database := middleware.DatabaseChoose()
+	companyRepository := repository.NewCompanyRepo(database)
+
+	err := companyRepository.ListID(&companies, ID)
 	if err != nil {
 		responses.Err(w, http.StatusInternalServerError, err)
 		return
 	}
 
 	responses.JSON(w, http.StatusOK, companies)
-}
-
-func ListCompany(w http.ResponseWriter, r *http.Request) {
-	ID := mux.Vars(r)["id"]
-
-	database := models.DatabaseChoose()
-	companyRepository := repository.NewCompanyRepo(database)
-
-	companies, err := companyRepository.ListID(ID)
-	if err != nil {
-		responses.Err(w, http.StatusInternalServerError, err)
-		return
-	}
-
-	httpStatusCode := http.StatusOK
-	if len(companies) == 0 {
-		httpStatusCode = http.StatusNotFound
-		responses.JSON(w, httpStatusCode, "resource not found")
-		return
-	}
-
-	responses.JSON(w, httpStatusCode, companies)
 
 }
 
@@ -99,10 +98,10 @@ func UpdateCompany(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	database := models.DatabaseChoose()
+	database := middleware.DatabaseChoose()
 	companyRepository := repository.NewCompanyRepo(database)
 
-	company.ID, err = companyRepository.Update(ID, company)
+	err = companyRepository.Update(ID, &company)
 	if err != nil {
 		responses.Err(w, http.StatusInternalServerError, err)
 		return
@@ -114,10 +113,12 @@ func UpdateCompany(w http.ResponseWriter, r *http.Request) {
 func DeleteCompany(w http.ResponseWriter, r *http.Request) {
 	ID := mux.Vars(r)["id"]
 
-	database := models.DatabaseChoose()
+	var company models.Company
+
+	database := middleware.DatabaseChoose()
 	companyRepository := repository.NewCompanyRepo(database)
 
-	err := companyRepository.Delete(ID)
+	err := companyRepository.Delete(ID, &company)
 	if err != nil {
 		responses.Err(w, http.StatusInternalServerError, err)
 		return

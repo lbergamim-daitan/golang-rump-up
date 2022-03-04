@@ -1,207 +1,116 @@
 package orm
 
 import (
-	"database/sql"
 	"fmt"
 
-	_ "github.com/go-sql-driver/mysql" // Driver
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 
 	"github.com/lbergamim-daitan/golang-rump-up/internal/config"
-	"github.com/lbergamim-daitan/golang-rump-up/internal/responses"
+	"github.com/lbergamim-daitan/golang-rump-up/internal/models"
 )
 
 type ORM struct {
-	DB *sql.DB
+	DB *gorm.DB
+}
+
+func TypeAssertion(model interface{}) interface{} {
+	value, ok := model.(*models.Company)
+	if !ok {
+		value, ok := model.(*models.Phone)
+		if !ok {
+			return ""
+		}
+		return value.CompanyID
+	}
+	return value.Name
 }
 
 func (d *ORM) Connect() error {
-	db, err := sql.Open("mysql", config.ORMConnection)
+	db, err := gorm.Open(mysql.Open(config.ORMConnection), &gorm.Config{})
 	if err != nil {
 		return err
 	}
 
-	if err = db.Ping(); err != nil {
-		db.Close()
-		return err
-	}
 	d.DB = db
 	return err
 }
 
-func (d *ORM) Insert(table string, columnName string, value string) (uint64, error) {
-	x := fmt.Sprintf("insert into %s (%s) values(?)", table, columnName)
-	statement, err := d.DB.Prepare(x)
-	if err != nil {
-		return 0, err
-	}
-	defer d.DB.Close()
+func (d *ORM) Insert(table string, columnName string, model interface{}) error {
 
-	result, err := statement.Exec(value)
-	if err != nil {
-		return 0, err
-	}
+	result := d.DB.Select(columnName).Create(model)
 
-	lastID, err := result.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-
-	return uint64(lastID), nil
-}
-
-func (d *ORM) InsertMany(table string, columnName string, rows [][]string, ID uint64) error {
-	x := fmt.Sprintf("insert into %s (%s) values(?, ?)", table, columnName)
-	statement, err := d.DB.Prepare(x)
-	if err != nil {
-		return err
-	}
-	defer d.DB.Close()
-
-	for _, row := range rows {
-		_, err := statement.Exec(row[0], ID)
-		if err != nil {
-			return err
-		}
+	if result.Error != nil {
+		return result.Error
 	}
 
 	return nil
 }
 
-func (d *ORM) Query(table string, columnName string, values string) ([]responses.DefaultQuery, error) {
-	x := fmt.Sprintf("select * from %s where %s LIKE ?", table, columnName)
-	query, err := d.DB.Query(x, values)
-	if err != nil {
-		return nil, err
-	}
-	defer d.DB.Close()
-
-	var defaultQuerys []responses.DefaultQuery
-
-	for query.Next() {
-		var defaultQuery responses.DefaultQuery
-
-		if err = query.Scan(
-			&defaultQuery.ID,
-			&defaultQuery.Name,
-		); err != nil {
-			return nil, err
-		}
-
-		defaultQuerys = append(defaultQuerys, defaultQuery)
+func (d *ORM) QueryID(table string, ID string, model interface{}) error {
+	result := d.DB.First(model, ID)
+	if result.Error != nil {
+		return result.Error
 	}
 
-	return defaultQuerys, nil
+	return nil
 }
 
-func (d *ORM) QueryAvailable(table string, columnName string, ID string) (responses.DefaultQuery, error) {
-	var defaultQuery responses.DefaultQuery
+func (d *ORM) Update(table string, columnName string, model interface{}, ID string) error {
+	value := TypeAssertion(model)
 
-	x := fmt.Sprintf("select * from %s where %s = ? order by rand() limit 1", table, columnName)
-
-	_, err := d.DB.Begin()
-	if err != nil {
-		return defaultQuery, err
+	result := d.DB.Model(model).Where("id = ?", ID).Update(columnName, value)
+	if result.Error != nil {
+		return result.Error
 	}
 
-	row := d.DB.QueryRow(x, ID)
-
-	if err := row.Scan(
-		&defaultQuery.ID,
-		&defaultQuery.CompanyID,
-		&defaultQuery.Number,
-	); err != nil {
-		return defaultQuery, err
-	}
-
-	return defaultQuery, nil
+	return nil
 }
 
-func (d *ORM) QueryID(table string, value string) ([]responses.DefaultQuery, error) {
-	x := fmt.Sprintf("select * from %s where ID = ?", table)
-	query, err := d.DB.Query(x, value)
-	if err != nil {
-		return nil, err
-	}
-	defer d.DB.Close()
-
-	var defaultQuerys []responses.DefaultQuery
-
-	for query.Next() {
-		var defaultQuery responses.DefaultQuery
-
-		if err = query.Scan(
-			&defaultQuery.ID,
-			&defaultQuery.Name,
-		); err != nil {
-			return nil, err
-		}
-
-		defaultQuerys = append(defaultQuerys, defaultQuery)
+func (d *ORM) InsertMany(table string, model interface{}) error {
+	result := d.DB.Create(model)
+	if result.Error != nil {
+		return result.Error
 	}
 
-	return defaultQuerys, nil
+	return nil
 }
 
-func (d *ORM) QueryCount(table string, columnName string) ([]responses.DefaultQuery, error) {
-	x := fmt.Sprintf("select %s, count(*) AS `available_phones` from %s group by %s", columnName, table, columnName)
-	query, err := d.DB.Query(x)
-	if err != nil {
-		return nil, err
-	}
-	defer d.DB.Close()
-
-	var defaultQuerys []responses.DefaultQuery
-
-	for query.Next() {
-		var defaultQuery responses.DefaultQuery
-
-		if err = query.Scan(
-			&defaultQuery.CompanyID,
-			&defaultQuery.PhoneQuantity,
-		); err != nil {
-			return nil, err
-		}
-
-		defaultQuerys = append(defaultQuerys, defaultQuery)
+func (d *ORM) Delete(table string, ID string, model interface{}) error {
+	result := d.DB.Delete(model, ID)
+	if result.Error != nil {
+		return result.Error
 	}
 
-	return defaultQuerys, nil
+	return nil
 }
 
-func (d *ORM) Update(table string, columnName string, value string, ID string) (uint64, error) {
-	x := fmt.Sprintf("update %s set %s = ? where ID = ?", table, columnName)
-	statement, err := d.DB.Prepare(x)
-	if err != nil {
-		return 0, err
-	}
-	defer d.DB.Close()
-
-	result, err := statement.Exec(value, ID)
-	if err != nil {
-		return 0, err
+func (d *ORM) Query(table string, columnName string, values string, model interface{}) error {
+	queryString := fmt.Sprintf("%s LIKE ?", columnName)
+	result := d.DB.Where(queryString, values).Find(model)
+	if result.Error != nil {
+		return result.Error
 	}
 
-	lastID, err := result.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-
-	return uint64(lastID), nil
+	return nil
 }
 
-func (d *ORM) Delete(table string, ID string) error {
-	x := fmt.Sprintf("delete from %s where ID = ?", table)
-	statement, err := d.DB.Prepare(x)
-
-	if err != nil {
-		return err
+func (d *ORM) QueryAvailable(table string, columnName string, ID string, model interface{}) error {
+	queryString := fmt.Sprintf("%s = ?", columnName)
+	result := d.DB.Where(queryString, ID).First(model)
+	if result.Error != nil {
+		return result.Error
 	}
-	defer d.DB.Close()
 
-	_, err = statement.Exec(ID)
-	if err != nil {
-		return err
-	}
+	return nil
+
+}
+
+func (d *ORM) QueryCount(table string, columnName string, model interface{}, modelGroup interface{}) error {
+	phone, _ := model.(*models.Phone)
+	phones, _ := modelGroup.(*[]models.PhoneGroup)
+
+	d.DB.Model(phone).Select("company_id, count(company_id) as available_phones").Group("company_id").Scan(&phones)
 
 	return nil
 }
