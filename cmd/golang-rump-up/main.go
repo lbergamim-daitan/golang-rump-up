@@ -1,4 +1,4 @@
-package server
+package main
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 	"github.com/lbergamim-daitan/golang-rump-up/internal/router"
 )
 
-func Run() {
+func main() {
 	config.Load()
 	r := router.Generate()
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", config.Port), r))

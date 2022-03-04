@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strconv"
 
 	"github.com/joho/godotenv"
@@ -15,11 +17,14 @@ var (
 	Port                     = 0
 	SecretKey                []byte
 	DBImplem                 = ""
+	_, b, _, _               = runtime.Caller(0)
+	ProjectRootPath          = filepath.Join(filepath.Dir(b), "../..")
 )
 
 func Load() {
+
 	var err error
-	if err = godotenv.Load(); err != nil {
+	if err = godotenv.Load(ProjectRootPath + "/.env"); err != nil {
 		log.Fatal(err)
 	}
 
