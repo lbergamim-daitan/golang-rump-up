@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
-	"github.com/lbergamim-daitan/golang-rump-up/internal/db"
 	"github.com/lbergamim-daitan/golang-rump-up/internal/models"
 	"github.com/lbergamim-daitan/golang-rump-up/internal/repository"
 	"github.com/lbergamim-daitan/golang-rump-up/internal/responses"
@@ -31,8 +30,9 @@ func CreateCompany(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	database := db.Database{}
-	companyRepository := repository.NewCompanyRepo(&database)
+	database := models.DatabaseChoose()
+	companyRepository := repository.NewCompanyRepo(database)
+
 	company.ID, err = companyRepository.Create(company)
 	if err != nil {
 		responses.Err(w, http.StatusInternalServerError, err)
@@ -45,8 +45,8 @@ func CreateCompany(w http.ResponseWriter, r *http.Request) {
 func ListCompanies(w http.ResponseWriter, r *http.Request) {
 	name := strings.ToLower(r.URL.Query().Get("name"))
 
-	database := db.Database{}
-	companyRepository := repository.NewCompanyRepo(&database)
+	database := models.DatabaseChoose()
+	companyRepository := repository.NewCompanyRepo(database)
 
 	companies, err := companyRepository.List(name)
 	if err != nil {
@@ -60,8 +60,8 @@ func ListCompanies(w http.ResponseWriter, r *http.Request) {
 func ListCompany(w http.ResponseWriter, r *http.Request) {
 	ID := mux.Vars(r)["id"]
 
-	database := db.Database{}
-	companyRepository := repository.NewCompanyRepo(&database)
+	database := models.DatabaseChoose()
+	companyRepository := repository.NewCompanyRepo(database)
 
 	companies, err := companyRepository.ListID(ID)
 	if err != nil {
@@ -99,22 +99,23 @@ func UpdateCompany(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	database := db.Database{}
-	companyRepository := repository.NewCompanyRepo(&database)
+	database := models.DatabaseChoose()
+	companyRepository := repository.NewCompanyRepo(database)
+
 	company.ID, err = companyRepository.Update(ID, company)
 	if err != nil {
 		responses.Err(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	responses.JSON(w, http.StatusOK, company)
+	responses.JSON(w, http.StatusCreated, company)
 }
 
 func DeleteCompany(w http.ResponseWriter, r *http.Request) {
 	ID := mux.Vars(r)["id"]
 
-	database := db.Database{}
-	companyRepository := repository.NewCompanyRepo(&database)
+	database := models.DatabaseChoose()
+	companyRepository := repository.NewCompanyRepo(database)
 
 	err := companyRepository.Delete(ID)
 	if err != nil {

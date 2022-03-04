@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
-	"github.com/lbergamim-daitan/golang-rump-up/internal/db"
 	"github.com/lbergamim-daitan/golang-rump-up/internal/models"
 	"github.com/lbergamim-daitan/golang-rump-up/internal/repository"
 	"github.com/lbergamim-daitan/golang-rump-up/internal/responses"
@@ -16,8 +15,8 @@ import (
 func AvailablePhones(w http.ResponseWriter, r *http.Request) {
 	ID := mux.Vars(r)["id"]
 
-	database := db.Database{}
-	phoneRepository := repository.NewPhoneRepo(&database)
+	database := models.DatabaseChoose()
+	phoneRepository := repository.NewPhoneRepo(database)
 
 	phone, err := phoneRepository.ListAvailable(ID)
 
@@ -38,10 +37,10 @@ func AvailablePhones(w http.ResponseWriter, r *http.Request) {
 
 func ListPhones(w http.ResponseWriter, r *http.Request) {
 
-	database := db.Database{}
-	companyRepository := repository.NewPhoneRepo(&database)
+	database := models.DatabaseChoose()
+	phoneRepository := repository.NewPhoneRepo(database)
 
-	phones, err := companyRepository.List()
+	phones, err := phoneRepository.List()
 	if err != nil {
 		responses.Err(w, http.StatusInternalServerError, err)
 		return
@@ -86,8 +85,8 @@ func CreatePhones(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	database := db.Database{}
-	phoneRepository := repository.NewPhoneRepo(&database)
+	database := models.DatabaseChoose()
+	phoneRepository := repository.NewPhoneRepo(database)
 
 	err = phoneRepository.Create(phone)
 	if err != nil {

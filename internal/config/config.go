@@ -13,6 +13,7 @@ var (
 	DatabaseStringConnection = ""
 	Port                     = 0
 	SecretKey                []byte
+	DBImplem                 = ""
 )
 
 func Load() {
@@ -33,4 +34,5 @@ func Load() {
 	)
 
 	SecretKey = []byte(os.Getenv("SECRET_KEY"))
+	DBImplem = os.Getenv("DB_IMPL")
 }
