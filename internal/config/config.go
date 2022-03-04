@@ -11,6 +11,7 @@ import (
 
 var (
 	DatabaseStringConnection = ""
+	ORMConnection            = ""
 	Port                     = 0
 	SecretKey                []byte
 	DBImplem                 = ""
@@ -27,9 +28,17 @@ func Load() {
 		Port = 5000
 	}
 
-	DatabaseStringConnection = fmt.Sprintf("%s:%s@/%s?charset=utf8&parseTime=True&loc=Local&multiStatements=true",
+	DatabaseStringConnection = fmt.Sprintf("%s:%s@tcp(mysql:%s)/%s?charset=utf8&parseTime=True&loc=Local&multiStatements=true",
 		os.Getenv("DB_USER"),
 		os.Getenv("DB_PASSWORD"),
+		os.Getenv("DB_PORT"),
+		os.Getenv("DB_NAME"),
+	)
+
+	ORMConnection = fmt.Sprintf("%s:%s@tcp(mysql:%s)/%s?charset=utf8&parseTime=True&loc=Local&multiStatements=true",
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_PASSWORD"),
+		os.Getenv("DB_PORT"),
 		os.Getenv("DB_NAME"),
 	)
 

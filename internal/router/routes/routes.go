@@ -5,6 +5,7 @@ import (
 
 	"github.com/gorilla/mux"
 	middlewares "github.com/lbergamim-daitan/golang-rump-up/internal/middleware"
+	"github.com/rs/cors"
 )
 
 type Route struct {
@@ -14,7 +15,7 @@ type Route struct {
 	Auth   bool
 }
 
-func Config(r *mux.Router) {
+func Config(r *mux.Router) http.Handler {
 	routes := CompaniesRoute
 	routes = append(routes, PhonesRoute...)
 
@@ -25,4 +26,16 @@ func Config(r *mux.Router) {
 			r.HandleFunc(route.URI, middlewares.Logger(route.Func)).Methods(route.Method)
 		}
 	}
+
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowCredentials: true,
+		AllowedHeaders:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "DELETE", "PUT", "PATCH", "OPTIONS"},
+	})
+
+	handler := c.Handler(r)
+
+	return handler
+
 }

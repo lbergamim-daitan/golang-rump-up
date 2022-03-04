@@ -15,7 +15,7 @@ type ORM struct {
 }
 
 func (d *ORM) Connect() error {
-	db, err := sql.Open("mysql", config.DatabaseStringConnection)
+	db, err := sql.Open("mysql", config.ORMConnection)
 	if err != nil {
 		return err
 	}
